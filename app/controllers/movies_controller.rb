@@ -4,7 +4,6 @@ class MoviesController < ApplicationController
   @rdate_class = ''
   @ratings_to_show_hash = {}
   
-  
   def show
     id = params[:id] # retrieve movie ID from URI route
     @movie = Movie.find(id) # look up movie by unique ID
@@ -13,15 +12,37 @@ class MoviesController < ApplicationController
 
   def index
     @all_ratings = Movie.all_ratings
-    
-    if !params[:ratings]
-      @all_ratings_hash = Hash[@all_ratings.collect {|x| [x, '1']}]
-      redirect_to movies_path(:ratings => @all_ratings_hash) and return
+    if params.has_key?(:ratings)
+      @ratings_to_show = params[:ratings].keys
+      session[:ratings] = @ratings_to_show
+    else
+      if params.has_key?(:refresh)
+        session[:ratings] = @all_ratings
+      end
     end
 
-    @ratings_to_show = params[:ratings].keys
-    @ratings_to_show_hash = Hash[@ratings_to_show.collect {|x| [x, '1']}]
+    if params.has_key?(:sort)
+      session[:sort] = params[:sort]
+    end
 
+    if !session.has_key?(:ratings) 
+      @all_ratings_hash = Hash[@all_ratings.collect {|x| [x, '1']}]
+      session[:ratings] = @all_ratings
+      redirect_to movies_path(:ratings => @all_ratings_hash, :sort => session.has_key?(:sort) ? session[:sort] : '') and return
+    end
+
+    if !session.has_key?(:sort)
+      session[:sort] = ''
+      @ratings_hash = Hash[session[:ratings].collect {|x| [x, '1']}]
+      redirect_to movies_path(:ratings => @ratings_hash, :sort => '') and return
+    end
+
+    if !params.has_key?(:ratings) || !params.has_key?(:sort)
+      redirect_to movies_path(:ratings => Hash[session[:ratings].collect {|x| [x, '1']}], :sort => session[:sort]) and return
+    end
+
+    @ratings_to_show_hash = Hash[@ratings_to_show.collect {|x| [x, '1']}]
+    
     @movies = Movie.with_ratings(@ratings_to_show)
 
     case params[:sort]
@@ -72,13 +93,6 @@ class MoviesController < ApplicationController
   # This helps make clear which methods respond to requests, and which ones do not.
   def movie_params
     params.require(:movie).permit(:title, :rating, :description, :release_date)
-  end
-  
-
-  def get_ratings_to_show_hash
-    @ratings_to_show_hash = {}
-    @ratings_to_show.each { |x| @ratings_to_show_hash[x] = '1' }
-    return @ratings_to_show_hash
   end
 
 end
