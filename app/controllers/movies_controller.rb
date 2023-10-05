@@ -1,5 +1,5 @@
 class MoviesController < ApplicationController
-
+  
   def show
     id = params[:id] # retrieve movie ID from URI route
     @movie = Movie.find(id) # look up movie by unique ID
@@ -7,7 +7,15 @@ class MoviesController < ApplicationController
   end
 
   def index
-    @movies = Movie.all
+    @all_ratings = Movie.all_ratings
+
+    if !params.has_key?(:ratings)
+      redirect_to movies_path(:ratings => Hash[@all_ratings.collect {|x| [x, '1']}]) and return
+    end
+
+    @ratings_to_show = params[:ratings].keys
+    @movies = Movie.with_ratings(@ratings_to_show)
+
   end
 
   def new
@@ -44,4 +52,5 @@ class MoviesController < ApplicationController
   def movie_params
     params.require(:movie).permit(:title, :rating, :description, :release_date)
   end
+
 end
